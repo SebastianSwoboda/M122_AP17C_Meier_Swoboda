@@ -12,6 +12,7 @@ function GenerateForm {
   #endregion
 
   #Make all erros Terminating errors
+
   $erroractionPreference = "stop"
   
   #region Generated Form Objects
@@ -26,6 +27,8 @@ function GenerateForm {
   $fileFolderView = New-Object System.Windows.Forms.ListView
   $InitialFormWindowState = New-Object System.Windows.Forms.FormWindowState
   $changeNameBox = New-Object System.Windows.Forms.TextBox
+  $createFolder = New-Object System.Windows.Forms.Button
+  $createFile = New-Object System.Windows.Forms.Button
   #endregion Generated Form Objects
 
   #Global variables
@@ -37,14 +40,12 @@ function GenerateForm {
   function getFilesAndFolders() {
     try {
       return Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name }
-
     }
     catch {
       $global:selectedPath = $driveSelect.Text + ":/"
       $searchBox.Text = "Unable to open folder"
       return Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name }
     }
-
   }
 
   #This function is used to display all Files and Folders in the selected path in the listView
@@ -74,18 +75,18 @@ function GenerateForm {
 
   #Sorts files And folders alphabetically or by last modified date
   function sortFilesAndFolders() {
-      switch ($sortBySelect.Text) {
-        "alphabetically" {
-          addFilesAndFoldersToList(Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name } | sort ) 
-        }
-        "date" {
-          $test = Get-ChildItem -Path "$($global:selectedPath)" | sort LastWriteTime -Descending 
-          addFilesAndFoldersToList($test) 
-        }
-        default {
-          addFilesAndFoldersToList
-        }
+    switch ($sortBySelect.Text) {
+      "alphabetically" {
+        addFilesAndFoldersToList(Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name } | sort ) 
       }
+      "date" {
+        $test = Get-ChildItem -Path "$($global:selectedPath)" | sort LastWriteTime -Descending 
+        addFilesAndFoldersToList($test) 
+      }
+      default {
+        addFilesAndFoldersToList
+      }
+    }
   }
 
   #end of helper methods
@@ -99,6 +100,31 @@ function GenerateForm {
   #Generated Event Script Blocks
   #----------------------------------------------
   #Provide Custom Code for events specified in PrimalForms.
+
+  #Create Folder
+  $handler_createFolder_Click = 
+  {
+    try {
+      New-Item -Path $global:selectedPath -Name $changeNameBox.Text -ItemType "Directory"
+      sortFilesAndFolders
+    }
+    catch {
+      $searchBox.Text = "Cant create folder"
+    }
+  }
+
+#Create file 
+  $createFileClick = 
+  {
+    try {
+      New-Item -Path $global:selectedPath -Name $changeNameBox.Text -ItemType "file"
+      sortFilesAndFolders
+    }
+    catch {
+      $searchBox.Text = "Cant create file"
+    }
+
+  }
 
   #Will search for file/folder when search button is clicked
   $handler_searchButton_Click = {
@@ -176,14 +202,13 @@ function GenerateForm {
   
   #Will edit name of selected file/folder when clicked 
   $button_edit_click = 
-  {try {
-    $fileToEdit = $global:selectedPath + "/" + $fileFolderView.SelectedItems[0].Text
-    Rename-Item -Path $fileToEdit -NewName $changeNameBox.Text
-    addFilesAndFoldersToList 
-  }
-  catch {
-    $searchBox.Text = "Cant edit name"
-    
+  { try {
+      $fileToEdit = $global:selectedPath + "/" + $fileFolderView.SelectedItems[0].Text
+      Rename-Item -Path $fileToEdit -NewName $changeNameBox.Text
+      addFilesAndFoldersToList 
+    }
+    catch {
+      $searchBox.Text = "Cant edit name"
     }
   }
   
@@ -203,6 +228,42 @@ function GenerateForm {
   $form1.Name = "form1"
   $form1.Text = "File Manager"
   $form1.add_Load($handler_form1_Load)
+  $form1.FormBorderStyle = 3
+  $form1.MaximizeBox = $false
+
+  $createFolder.DataBindings.DefaultDataSourceUpdateMode = 0
+  $createFolder.Image = [System.Drawing.Image]::FromFile('C:\Users\sebas\Downloads\icons8-add-folder-16.png')
+  $System_Drawing_Point = New-Object System.Drawing.Point
+  $System_Drawing_Point.X = 185
+  $System_Drawing_Point.Y = 11
+  $createFolder.Location = $System_Drawing_Point
+  $createFolder.Name = "createFolder"
+  $System_Drawing_Size = New-Object System.Drawing.Size
+  $System_Drawing_Size.Height = 23
+  $System_Drawing_Size.Width = 45
+  $createFolder.Size = $System_Drawing_Size
+  $createFolder.TabIndex = 12
+  $createFolder.UseVisualStyleBackColor = $True
+  $createFolder.add_Click($handler_createFolder_Click)
+
+  $form1.Controls.Add($createFolder)
+
+  $createFile.DataBindings.DefaultDataSourceUpdateMode = 0
+  $createFile.Image = [System.Drawing.Image]::FromFile('C:\Users\sebas\Downloads\interface (1).png')
+  $System_Drawing_Point = New-Object System.Drawing.Point
+  $System_Drawing_Point.X = 140
+  $System_Drawing_Point.Y = 11
+  $createFile.Location = $System_Drawing_Point
+  $createFile.Name = "createFile"
+  $System_Drawing_Size = New-Object System.Drawing.Size
+  $System_Drawing_Size.Height = 23
+  $System_Drawing_Size.Width = 39
+  $createFile.Size = $System_Drawing_Size
+  $createFile.TabIndex = 11
+  $createFile.UseVisualStyleBackColor = $True
+  $createFile.add_Click($createFileClick)
+
+  $form1.Controls.Add($createFile)
 
   $searchButton.DataBindings.DefaultDataSourceUpdateMode = 0
   $System_Drawing_Point = New-Object System.Drawing.Point
