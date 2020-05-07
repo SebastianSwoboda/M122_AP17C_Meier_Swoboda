@@ -46,9 +46,13 @@ function GenerateForm {
       $listViewItem = ""
       if (checkIfFolder($item)) {
         $listViewItem = $fileFolderView.Items.Add("$($item):(Folder)") 
+        $listViewItem.SubItems.Add("Folder")
+
       }
       else {
         $listViewItem = $fileFolderView.Items.Add("$item")
+        $listViewItem.SubItems.Add("File")
+
       }
       $listViewItem.SubItems.Add($lastChangeTime)
       $fileFolderView.AutoResizeColumns(2)
@@ -326,7 +330,10 @@ function GenerateForm {
   $fileFolderView.add_Click($fileFolder_click)
   $fileFolderView.Add_ItemActivate($fileFolder_doubleClick)  
   $fileFolderView.Columns.Add("File/Folder", 100)
+  $fileFolderView.Columns.Add("Type", 60)
   $fileFolderView.Columns.Add("Last Changed", 100)
+
+
 
 
   $form1.Controls.Add($fileFolderView)
