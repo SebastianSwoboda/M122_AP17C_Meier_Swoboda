@@ -123,6 +123,7 @@ function GenerateForm {
   #If double clicked on folder it will load and display files and folders inside selected folder
   #If double clicked on file it will try and open it 
   $fileFolder_doubleClick = {
+    $searchBox.Text = "Search"
     $item = $fileFolderView.SelectedItems[0].Text
     if (checkIfFolder($item)) {
       $global:selectedPath += "/$($item)"
