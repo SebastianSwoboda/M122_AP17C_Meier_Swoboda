@@ -108,23 +108,34 @@ function GenerateForm {
     }
   }
 
-  #If double clicked on folder it will load and display files and folders inside selected folder 
+  #If double clicked on folder it will load and display files and folders inside selected folder
+  #If double clicked on file it will try and open it 
   $fileFolder_doubleClick = {
     $item = $fileFolderView.SelectedItems[0].Text.Split(':')[0]
     if (checkIfFolder($item)) {
       $global:selectedPath += "/$($item)"
       sortFilesAndFolders
     }else{
-      Invoke-Item $global:selectedPath"/$($item)"
-
+      try {
+        Invoke-Item $global:selectedPath"/$($item)"
+      }
+      catch {
+        $searchBox.Text = "unable to open file"
+      }
     }
   }
   
   #Will navigate back to parent folder when clicked
   $button_back_click = 
-  {
+  {try {
     $global:selectedPath += "\.."
     sortFilesAndFolders
+  }
+  catch {
+    $global:selectedPath = $driveSelect.Text + ":/"
+    sortFilesAndFolders
+  }
+  
   }
   
   #Will delete selected file/folder 
