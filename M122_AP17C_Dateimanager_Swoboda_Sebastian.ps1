@@ -91,7 +91,7 @@ function GenerateForm {
   #Will search for file/folder when search button is clicked
   $handler_searchButton_Click = {
     try {
-      addFilesAndFoldersToList(Get-ChildItem -Path $global:selectedPath -Filter $searchBox.Text -Recurse -ErrorAction SilentlyContinue -Force)
+      addFilesAndFoldersToList(Get-ChildItem -Path $global:selectedPath -Filter $searchBox.Text)
     }
     catch { 
       $searchBox.Text = "Not found"
