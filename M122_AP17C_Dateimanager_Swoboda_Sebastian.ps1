@@ -110,10 +110,13 @@ function GenerateForm {
 
   #If double clicked on folder it will load and display files and folders inside selected folder 
   $fileFolder_doubleClick = {
-    $folder = $fileFolderView.SelectedItems[0].Text.Split(':')[0]
-    if (checkIfFolder($folder)) {
-      $global:selectedPath += "/$($folder)"
+    $item = $fileFolderView.SelectedItems[0].Text.Split(':')[0]
+    if (checkIfFolder($item)) {
+      $global:selectedPath += "/$($item)"
       sortFilesAndFolders
+    }else{
+      Invoke-Item $global:selectedPath"/$($item)"
+
     }
   }
   
