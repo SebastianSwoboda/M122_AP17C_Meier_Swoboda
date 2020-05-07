@@ -12,7 +12,6 @@ function GenerateForm {
   #endregion
 
   #Make all erros Terminating errors
-
   $erroractionPreference = "stop"
   
   #region Generated Form Objects
@@ -113,7 +112,7 @@ function GenerateForm {
     }
   }
 
-#Create file 
+  #Create file 
   $createFileClick = 
   {
     try {
