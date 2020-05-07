@@ -43,16 +43,12 @@ function GenerateForm {
     $fileFolderView.Items.Clear()
     foreach ($item in $listOfFilesAndFolders) {
       $lastChangeTime = (Get-Item "$global:selectedPath\$item" | select -Property LastWriteTime).LastWriteTime.ToString("yyyy-MM-dd")
-      $listViewItem = ""
+      $listViewItem = $fileFolderView.Items.Add("$item")
       if (checkIfFolder($item)) {
-        $listViewItem = $fileFolderView.Items.Add("$($item):(Folder)") 
         $listViewItem.SubItems.Add("Folder")
-
       }
       else {
-        $listViewItem = $fileFolderView.Items.Add("$item")
         $listViewItem.SubItems.Add("File")
-
       }
       $listViewItem.SubItems.Add($lastChangeTime)
       $fileFolderView.AutoResizeColumns(2)
@@ -115,11 +111,12 @@ function GenerateForm {
   #If double clicked on folder it will load and display files and folders inside selected folder
   #If double clicked on file it will try and open it 
   $fileFolder_doubleClick = {
-    $item = $fileFolderView.SelectedItems[0].Text.Split(':')[0]
+    $item = $fileFolderView.SelectedItems[0].Text
     if (checkIfFolder($item)) {
       $global:selectedPath += "/$($item)"
       sortFilesAndFolders
-    }else{
+    }
+    else {
       try {
         Invoke-Item $global:selectedPath"/$($item)"
       }
@@ -131,21 +128,21 @@ function GenerateForm {
   
   #Will navigate back to parent folder when clicked
   $button_back_click = 
-  {try {
-    $global:selectedPath += "\.."
-    sortFilesAndFolders
-  }
-  catch {
-    $global:selectedPath = $driveSelect.Text + ":/"
-    sortFilesAndFolders
-  }
+  { try {
+      $global:selectedPath += "\.."
+      sortFilesAndFolders
+    }
+    catch {
+      $global:selectedPath = $driveSelect.Text + ":/"
+      sortFilesAndFolders
+    }
   
   }
   
   #Will delete selected file/folder 
   $button_delete_click = 
   {
-    $itemToDelete = $fileFolderView.SelectedItems[0].Text.Split(':')[0]
+    $itemToDelete = $fileFolderView.SelectedItems[0].Text
     $path = "$($global:selectedPath)\$($itemToDelete)"
     Remove-Item $path -recurse
     addFilesAndFoldersToList
@@ -162,7 +159,7 @@ function GenerateForm {
   #Will edit name of selected file/folder when clicked 
   $button_edit_click = 
   {
-    $fileToEdit = $global:selectedPath + "/" + $fileFolderView.SelectedItems[0].Text.Split(':')[0]
+    $fileToEdit = $global:selectedPath + "/" + $fileFolderView.SelectedItems[0].Text
     Rename-Item -Path $fileToEdit -NewName $changeNameBox.Text
     addFilesAndFoldersToList 
   }
