@@ -10,6 +10,9 @@ function GenerateForm {
   [reflection.assembly]::loadwithpartialname("System.Windows.Forms") | Out-Null
   [reflection.assembly]::loadwithpartialname("System.Drawing") | Out-Null
   #endregion
+
+  #Make all erros Terminating errors
+  $erroractionPreference = "stop"
   
   #region Generated Form Objects
   $form1 = New-Object System.Windows.Forms.Form
@@ -32,7 +35,16 @@ function GenerateForm {
 
   #Is used to store all files and folders in selected path in an array
   function getFilesAndFolders() {
-    return Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name }
+    try {
+      return Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name }
+
+    }
+    catch {
+      $global:selectedPath = $driveSelect.Text + ":/"
+      $searchBox.Text = "Unable to open folder"
+      return Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name }
+    }
+
   }
 
   #This function is used to display all Files and Folders in the selected path in the listView
@@ -62,18 +74,18 @@ function GenerateForm {
 
   #Sorts files And folders alphabetically or by last modified date
   function sortFilesAndFolders() {
-    switch ($sortBySelect.Text) {
-      "alphabetically" {
-        addFilesAndFoldersToList(Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name } | sort ) 
+      switch ($sortBySelect.Text) {
+        "alphabetically" {
+          addFilesAndFoldersToList(Get-ChildItem -Path "$($global:selectedPath)" | Foreach-Object { $_.Name } | sort ) 
+        }
+        "date" {
+          $test = Get-ChildItem -Path "$($global:selectedPath)" | sort LastWriteTime -Descending 
+          addFilesAndFoldersToList($test) 
+        }
+        default {
+          addFilesAndFoldersToList
+        }
       }
-      "date" {
-        $test = Get-ChildItem -Path "$($global:selectedPath)" | sort LastWriteTime -Descending 
-        addFilesAndFoldersToList($test) 
-      }
-      default {
-        addFilesAndFoldersToList
-      }
-    }
   }
 
   #end of helper methods
@@ -142,10 +154,15 @@ function GenerateForm {
   #Will delete selected file/folder 
   $button_delete_click = 
   {
-    $itemToDelete = $fileFolderView.SelectedItems[0].Text
-    $path = "$($global:selectedPath)\$($itemToDelete)"
-    Remove-Item $path -recurse
-    addFilesAndFoldersToList
+    try {
+      $itemToDelete = $fileFolderView.SelectedItems[0].Text
+      $path = "$($global:selectedPath)\$($itemToDelete)"
+      Remove-Item $path -recurse
+      addFilesAndFoldersToList 
+    }
+    catch {
+      $searchBox.Text = "Unable to delete File/Folder"
+    }
   }
   
   #Will sort files/folders according to selection 
@@ -158,10 +175,15 @@ function GenerateForm {
   
   #Will edit name of selected file/folder when clicked 
   $button_edit_click = 
-  {
+  {try {
     $fileToEdit = $global:selectedPath + "/" + $fileFolderView.SelectedItems[0].Text
     Rename-Item -Path $fileToEdit -NewName $changeNameBox.Text
     addFilesAndFoldersToList 
+  }
+  catch {
+    $searchBox.Text = "Cant edit name"
+    
+    }
   }
   
   $OnLoadForm_StateCorrection =
