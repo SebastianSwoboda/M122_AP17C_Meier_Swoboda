@@ -86,10 +86,12 @@ function GenerateForm {
     # Der Edit button ändert den Namen des selektierten File
     $handler_btn_edit_OnClick= 
     {
+      if($editFileInput.Text -ne ""){
       $inputString = $editFileInput.Text
       Rename-Item -Path $global:path\$global:selected_directory -NewName $global:path\$inputString
       loadParentView  
       $editFileInput.Text = ""
+      }
     }
     
     # Mit dieser Methode geht man zum Parent Folder
