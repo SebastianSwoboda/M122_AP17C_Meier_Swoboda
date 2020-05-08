@@ -26,7 +26,6 @@ function GenerateForm {
     $InitialFormWindowState = New-Object System.Windows.Forms.FormWindowState
     #endregion Generated Form Objects
     $global:current_content_parentView = $Null
-    $global:current_content_childView = $Null
     $global:selected_directory = $Null
     $global:path= $Null
     $global:sort_style = $Null
@@ -37,8 +36,8 @@ function GenerateForm {
     #----------------------------------------------
     #Provide Custom Code for events specified in PrimalForms.
     
-    
-    # Wenn man auf ein Item in der ersten List View doppelt drauf klickt, geht man in das ausgesuchte Directory rein, die List Views werden upgedatet
+
+    # Wenn man auf ein Item in der parentView doppelt drauf klickt, geht man in das ausgesuchte Directory rein, die List Views werden upgedatet
     $handler_parentView_DoubleClick= 
     {
       $global:path = $global:path + "\" + $global:selected_directory
@@ -57,13 +56,17 @@ function GenerateForm {
     # Hier wird der Inhalt vom von einem selektierten Directory auf der linken Seite 
     $parentView_selected_mode= 
     {
-    $name = $parentView.SelectedItems.SubItems
-    $global:selected_directory = $parentView.SelectedItems.SubItems[2].Text
+      if($parentView.SelectedItems.Count -eq 0) 
+      {
+        return
+      }
+     $global:selected_directory = $parentView.SelectedItems.SubItems[2].Text
     $childView.Items.Clear()
     loadChildView($global:selected_directory)
     }
     
-    
+
+
     # Nimmt die Sortierungsart entgegen
     $parentView_sort_content=
     {
@@ -72,8 +75,8 @@ function GenerateForm {
       }
     }
     
-    # Mit dem delete Button kann man ein File löschen
-    $btn_delete_OnClick= 
+    # Mit dem delete Button kann man ein File/Directory und falls vorhanden alle untergeordner gelöscht
+    $handler_btn_delete_OnClick= 
     {
       Remove-Item -Path $global:path"\"$global:selected_directory -recurse
       loadParentView
@@ -81,24 +84,23 @@ function GenerateForm {
     
     
     # Der Edit button ändert den Namen des selektierten File
-    $handler_btn_edit_Click= 
+    $handler_btn_edit_OnClick= 
     {
       $inputString = $editFileInput.Text
       Rename-Item -Path $global:path\$global:selected_directory -NewName $global:path\$inputString
       loadParentView  
       $editFileInput.Text = ""
-    
     }
     
     # Mit dieser Methode geht man zum Parent Folder
-    $handler_back_onClick= 
+    $handler_btn_back_OnClick= 
     {
       $global:path = $global:path + "\.."
       loadParentView
     }
     
     # Der Handler der die Suchfunktion ausführen soll, um nach einem bestimmten File zu suchen
-    $handler_button_search= 
+    $handler_btn_search= 
     {
       $searchText = $textBox_search.Text
       if($searchText -ne ""){
@@ -107,6 +109,7 @@ function GenerateForm {
       }
     }
     
+    # Ladet alle vorhandenden Diskplatten vom Computer
     $list = [System.IO.DriveInfo]::getdrives()
      foreach($u in $list) {
         $comboBox_disk.Items.Add($u) | Out-Null
@@ -142,7 +145,7 @@ function GenerateForm {
     $btn_search.TabIndex = 12
     $btn_search.Text = "Search"
     $btn_search.UseVisualStyleBackColor = $True
-    $btn_search.add_Click($handler_button_search)
+    $btn_search.add_Click($handler_btn_search)
     
     $mainForm.Controls.Add($btn_search)
     
@@ -217,7 +220,6 @@ function GenerateForm {
     $System_Drawing_Size.Width = 486
     $parentView.Size = $System_Drawing_Size
     $parentView.TabIndex = 6
-    $parentView.MultiSelect = $False
     $parentView.FullRowSelect = $True
     $parentView.UseCompatibleStateImageBehavior = $False
     $parentView.View = "Details"
@@ -261,7 +263,7 @@ function GenerateForm {
     $btn_delete.TabIndex = 4
     $btn_delete.Text = "Delete"
     $btn_delete.UseVisualStyleBackColor = $True
-    $btn_delete.add_Click($btn_delete_OnClick)
+    $btn_delete.add_Click($handler_btn_delete_OnClick)
     
     $mainForm.Controls.Add($btn_delete)
     
@@ -279,7 +281,7 @@ function GenerateForm {
     $btn_edit.TabIndex = 3
     $btn_edit.Text = "Edit"
     $btn_edit.UseVisualStyleBackColor = $True
-    $btn_edit.add_Click($handler_btn_edit_Click)
+    $btn_edit.add_Click($handler_btn_edit_OnClick)
     
     $mainForm.Controls.Add($btn_edit)
     
@@ -318,7 +320,7 @@ function GenerateForm {
     $btn_back.TabIndex = 1
     $btn_back.Text = "Back"
     $btn_back.UseVisualStyleBackColor = $True
-    $btn_back.add_Click($handler_back_onClick)
+    $btn_back.add_Click($handler_btn_back_OnClick)
     
     $mainForm.Controls.Add($btn_back)
     
@@ -333,168 +335,166 @@ function GenerateForm {
     
     } #End Function
     
-    function loadParentView(){
-      $parentView.Items.Clear()
-      $childView.Items.Clear()
-      $sort_style = $comboBox_sort.Text
-      switch ($sort_style){
-        "Asc"{
-          $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object 
-          $counter = 0
-          foreach($i in $global:current_content_parentView){
-            $type = isFolder($global:path + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $parentView.Items.Add($item)
-            $counter++
-          } 
+        # Ladet die Daten für die Linke Listview bzw. ParentView, diese wird immer aufgerufen, wenn sich der Content der ParentListView geändert wurde
+        function loadParentView(){
+          $parentView.Items.Clear()
+          $childView.Items.Clear()
+          $sort_style = $comboBox_sort.Text
+          switch ($sort_style){
+            "Asc"{
+              $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object 
+              $counter = 0
+              foreach($i in $global:current_content_parentView){
+                $type = isFolder($global:path + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $parentView.Items.Add($item)
+                $counter++
+              } 
+            }
+        
+            "Desc"{
+              $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object -Descending
+              $counter = 0
+              foreach($i in $global:current_content_parentView){
+                $type = isFolder($global:path + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $parentView.Items.Add($item)
+                $counter++
+              } 
+            }
+        
+            "Latest Date"{
+              $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $False}
+              $counter = 0
+              foreach($i in $global:current_content_parentView){
+                $type = isFolder($global:path + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $parentView.Items.Add($item)
+                $counter++
+              }   
+            }
+            "Oldest Date"{
+              $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $True}
+              $counter = 0
+              foreach($i in $global:current_content_parentView){
+                $type = isFolder($global:path + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $parentView.Items.Add($item)
+                $counter++
+              } 
+            }
+            default{
+              $global:current_content_parentView = Get-ChildItem -Path $global:path
+              $counter = 0
+              foreach($i in $global:current_content_parentView){
+                $type = isFolder($global:path + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $parentView.Items.Add($item)
+                $counter++
+              } 
+            }
+          }
+          $parentView.AutoResizeColumns("HeaderSize")
         }
-    
-        "Desc"{
-          $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object -Descending
+        
+        # Ladet die Daten für die rechte Listview bzw. ChildView, diese wird immer aufgerufen, wenn sich der Content der ChildView ändert wurde
+        function loadChildView($parentFile) {
           $counter = 0
-          foreach($i in $global:current_content_parentView){
-            $type = isFolder($global:path + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $parentView.Items.Add($item)
-            $counter++
-          } 
+          switch ($sort_style){
+            "Asc"{
+              $list = Get-ChildItem -Path $global:path\$parentFile | Sort-Object 
+              $counter = 0
+              foreach($i in $list){
+                $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $childView.Items.Add($item)
+                $counter++
+              } 
+            }
+        
+            "Desc"{
+              $list = Get-ChildItem -Path $global:path\$parentFile | Sort-Object -Descending
+              $counter = 0
+              foreach($i in $list){
+                $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $childView.Items.Add($item)
+                $counter++
+              } 
+            }
+        
+            "Latest Date"{
+              $list = Get-ChildItem -Path $global:path"\"$parentFile | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $False}
+              $counter = 0
+              foreach($i in $list){
+                $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $childView.Items.Add($item)
+                $counter++
+              }   
+            }
+            "Oldest Date"{
+              $list = Get-ChildItem -Path $global:path"\"$parentFile | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $True}
+              $counter = 0
+              foreach($i in $list){
+                $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $childView.Items.Add($item)
+                $counter++
+              } 
+            }
+            default{
+              $list = Get-ChildItem -Path $global:path\$parentFile
+              $counter = 0
+              foreach($i in $list){
+                $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
+                $item = new-Object System.Windows.Forms.ListViewItem($counter)
+                $item.SubItems.Add($type)
+                $item.SubItems.Add($i.Name)
+                $item.SubItems.Add($i.LastWriteTime.ToString())
+                $childView.Items.Add($item)
+                $counter++
+              } 
+            }
+          }
+          $childView.AutoResizeColumns("HeaderSize")
         }
-    
-        "Latest Date"{
-          $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $False}
-          $counter = 0
-          foreach($i in $global:current_content_parentView){
-            $type = isFolder($global:path + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $parentView.Items.Add($item)
-            $counter++
-          }   
+        
+        
+        function isFolder($path) {
+          if((Get-Item $path) -is [System.IO.DirectoryInfo]){
+            return "Directory"
+          } else {
+            return "File"
+          }
         }
-        "Oldest Date"{
-          $global:current_content_parentView = Get-ChildItem -Path $global:path | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $True}
-          $counter = 0
-          foreach($i in $global:current_content_parentView){
-            $type = isFolder($global:path + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $parentView.Items.Add($item)
-            $counter++
-          } 
-        }
-        default{
-          $global:current_content_parentView = Get-ChildItem -Path $global:path
-          $counter = 0
-          foreach($i in $global:current_content_parentView){
-            $type = isFolder($global:path + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $parentView.Items.Add($item)
-            $counter++
-          } 
-        }
-      }
-      $parentView.AutoResizeColumns("HeaderSize")
-    }
-    
-    function loadChildView($parentFile) {
-      $counter = 0
-      switch ($sort_style){
-        "Asc"{
-          $list = Get-ChildItem -Path $global:path\$parentFile | Sort-Object 
-          $counter = 0
-          foreach($i in $list){
-            $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $childView.Items.Add($item)
-            $counter++
-          } 
-        }
-    
-        "Desc"{
-          $list = Get-ChildItem -Path $global:path\$parentFile | Sort-Object -Descending
-          $counter = 0
-          foreach($i in $list){
-            $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $childView.Items.Add($item)
-            $counter++
-          } 
-        }
-    
-        "Latest Date"{
-          $list = Get-ChildItem -Path $global:path"\"$parentFile | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $False}
-          $counter = 0
-          foreach($i in $list){
-            $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $childView.Items.Add($item)
-            $counter++
-          }   
-        }
-        "Oldest Date"{
-          $list = Get-ChildItem -Path $global:path"\"$parentFile | Sort-Object @{Expression = {0 - $_.LastWriteTime}; Descending = $True}
-          $counter = 0
-          foreach($i in $list){
-            $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $childView.Items.Add($item)
-            $counter++
-          } 
-        }
-        default{
-          $list = Get-ChildItem -Path $global:path\$parentFile
-          $counter = 0
-          foreach($i in $list){
-            $type = isFolder($global:path + "\" + $parentFile + "\" + $i.Name)
-            $item = new-Object System.Windows.Forms.ListViewItem($counter)
-            $item.SubItems.Add($type)
-            $item.SubItems.Add($i.Name)
-            $item.SubItems.Add($i.LastWriteTime.ToString())
-            $childView.Items.Add($item)
-            $counter++
-          } 
-        }
-      }
-      $childView.AutoResizeColumns("HeaderSize")
-    }
-    
-    
-    
-    function isFolder($path) {
-      if((Get-Item $path) -is [System.IO.DirectoryInfo]){
-        return "Directory"
-      } else {
-        return "File"
-      }
-    }
-    
-    
-    
     #Call the Function
     GenerateForm
     
